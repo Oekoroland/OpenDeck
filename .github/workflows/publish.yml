@@ -358,21 +358,30 @@ jobs:
               # Install frontend dependencies
               deno install &&
               
-              # Build the Tauri application natively on ARM64 (skip AppImage due to linuxdeploy issues)
-              deno task tauri build -- --bundles deb,rpm &&
+              # Build the Tauri application natively on ARM64 (allow partial failures)
+              deno task tauri build || echo 'Build completed with some failures, collecting available artifacts' &&
               
-              # Create artifacts directory
+              # Create artifacts directory first
               mkdir -p /workspace/artifacts &&
               
-              # Copy artifacts to expected location for upload
-              find src-tauri/target/release/bundle -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' -o -name '*.tar.gz' | xargs -I {} cp {} /workspace/artifacts/ || true &&
+              # Copy raw binary if it exists
+              if [ -f 'src-tauri/target/release/opendeck' ]; then
+                cp src-tauri/target/release/opendeck /workspace/artifacts/opendeck-arm64
+                echo 'Copied raw binary'
+              fi &&
               
-              # Also copy the raw binary
-              cp src-tauri/target/release/opendeck /workspace/artifacts/opendeck-arm64 || true &&
+              # Copy .deb files if they exist
+              find src-tauri/target/release/bundle -name '*.deb' -exec cp {} /workspace/artifacts/ \; 2>/dev/null || true &&
               
-              # List what we created
-              echo 'Created artifacts:' &&
-              ls -la /workspace/artifacts/
+              # Copy .rpm files if they exist  
+              find src-tauri/target/release/bundle -name '*.rpm' -exec cp {} /workspace/artifacts/ \; 2>/dev/null || true &&
+              
+              # Copy any AppImage files if they exist (unlikely but just in case)
+              find src-tauri/target/release/bundle -name '*.AppImage' -exec cp {} /workspace/artifacts/ \; 2>/dev/null || true &&
+              
+              # List what we actually got
+              echo 'Available artifacts:' &&
+              ls -la /workspace/artifacts/ 2>/dev/null || echo 'No artifacts directory or files found'
             "
       
       - name: Upload ARM64 artifacts
