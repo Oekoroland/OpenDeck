@@ -62,14 +62,83 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross pkg-config
           
-          # Download and manually install ARM64 .pc files and headers needed for GTK/WebKit
-          mkdir -p /tmp/arm64-deps
-          cd /tmp/arm64-deps
-          
-          # Create minimal pkg-config files for cross-compilation
+          # Create complete pkg-config files for cross-compilation
           sudo mkdir -p /usr/lib/aarch64-linux-gnu/pkgconfig
           
-          # Create a minimal gdk-3.0.pc file that will satisfy the build requirements
+          # Create glib-2.0.pc (base dependency)
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/glib-2.0.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: GLib
+          Description: C Utility Library
+          Version: 2.72.4
+          Libs: -L${libdir} -lglib-2.0
+          Cflags: -I${includedir}/glib-2.0 -I${libdir}/glib-2.0/include
+          EOF
+          
+          # Create cairo.pc
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/cairo.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: cairo
+          Description: Multi-platform 2D graphics library
+          Version: 1.16.0
+          Libs: -L${libdir} -lcairo
+          Cflags: -I${includedir}/cairo
+          EOF
+          
+          # Create pango.pc
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/pango.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: Pango
+          Description: Internationalized text handling
+          Version: 1.50.6
+          Requires: glib-2.0 cairo
+          Libs: -L${libdir} -lpango-1.0
+          Cflags: -I${includedir}/pango-1.0
+          EOF
+          
+          # Create gdk-pixbuf-2.0.pc
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/gdk-pixbuf-2.0.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: GdkPixbuf
+          Description: Image loading and scaling
+          Version: 2.42.8
+          Requires: glib-2.0
+          Libs: -L${libdir} -lgdk_pixbuf-2.0
+          Cflags: -I${includedir}/gdk-pixbuf-2.0
+          EOF
+          
+          # Create atk.pc
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/atk.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: Atk
+          Description: Accessibility toolkit
+          Version: 2.36.0
+          Requires: glib-2.0
+          Libs: -L${libdir} -latk-1.0
+          Cflags: -I${includedir}/atk-1.0
+          EOF
+          
+          # Create gdk-3.0.pc (now with proper dependencies)
           sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/gdk-3.0.pc << 'EOF'
           prefix=/usr
           exec_prefix=${prefix}
@@ -79,12 +148,27 @@ jobs:
           Name: GDK
           Description: GTK+ Drawing Kit
           Version: 3.24.33
-          Requires: gdk-pixbuf-2.0 >= 2.30.0 pango >= 1.44.0 cairo >= 1.14.0
+          Requires: gdk-pixbuf-2.0 pango cairo glib-2.0
           Libs: -L${libdir} -lgdk-3
-          Cflags: -I${includedir}/gtk-3.0 -I${includedir}/gdk-pixbuf-2.0 -I${includedir}/pango-1.0 -I${includedir}/cairo
+          Cflags: -I${includedir}/gtk-3.0 -I${includedir}/gtk-3.0/gdk
           EOF
           
-          # Create other essential .pc files
+          # Create gtk+-3.0.pc
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/gtk+-3.0.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: GTK+
+          Description: GTK+ Graphical UI Library
+          Version: 3.24.33
+          Requires: gdk-3.0 atk cairo glib-2.0 pango gdk-pixbuf-2.0
+          Libs: -L${libdir} -lgtk-3
+          Cflags: -I${includedir}/gtk-3.0
+          EOF
+          
+          # Create webkit2gtk-4.1.pc
           sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc << 'EOF'
           prefix=/usr
           exec_prefix=${prefix}
@@ -94,12 +178,54 @@ jobs:
           Name: WebKit2GTK
           Description: WebKit2GTK+ API
           Version: 2.40.5
-          Requires: gtk+-3.0 glib-2.0 libsoup-3.0
+          Requires: gtk+-3.0 glib-2.0
           Libs: -L${libdir} -lwebkit2gtk-4.1
           Cflags: -I${includedir}/webkitgtk-4.1
           EOF
           
-          echo "Minimal cross-compilation setup complete"
+          # Create additional required .pc files
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libappindicator3-0.1.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: appindicator3-0.1
+          Description: Application indicators
+          Version: 0.4.92
+          Requires: gtk+-3.0
+          Libs: -L${libdir} -lappindicator3
+          Cflags: -I${includedir}/libappindicator3-0.1
+          EOF
+          
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/librsvg-2.0.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: librsvg
+          Description: SVG library
+          Version: 2.52.5
+          Requires: gdk-pixbuf-2.0 cairo glib-2.0
+          Libs: -L${libdir} -lrsvg-2
+          Cflags: -I${includedir}/librsvg-2.0
+          EOF
+          
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libudev.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: libudev
+          Description: udev library
+          Version: 249
+          Libs: -L${libdir} -ludev
+          Cflags: -I${includedir}
+          EOF
+          
+          echo "Complete pkg-config setup for ARM64 cross-compilation created"
       - name: Set cross-compilation environment (ARM64)
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
         run: |
