@@ -335,9 +335,9 @@ jobs:
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             ubuntu:22.04 \
             bash -c "
-              # Update and install dependencies (including unzip for Deno)
+              # Update and install dependencies (including unzip for Deno and xdg-utils for AppImage)
               apt-get update &&
-              apt-get install -y curl build-essential libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev pkg-config libssl-dev git unzip &&
+              apt-get install -y curl build-essential libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev pkg-config libssl-dev git unzip xdg-utils &&
               
               # Install Rust
               curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable &&
@@ -361,12 +361,18 @@ jobs:
               # Build the Tauri application natively on ARM64
               deno task tauri build &&
               
-              # Copy artifacts to expected location for upload
+              # Create artifacts directory
               mkdir -p /workspace/artifacts &&
-              find src-tauri/target/release/bundle -name '*.deb' -o -name '*.AppImage' -o -name '*.tar.gz' | xargs -I {} cp {} /workspace/artifacts/ || true &&
+              
+              # Copy artifacts to expected location for upload
+              find src-tauri/target/release/bundle -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' -o -name '*.tar.gz' | xargs -I {} cp {} /workspace/artifacts/ || true &&
               
               # Also copy the raw binary
-              cp src-tauri/target/release/opendeck /workspace/artifacts/opendeck-arm64 || true
+              cp src-tauri/target/release/opendeck /workspace/artifacts/opendeck-arm64 || true &&
+              
+              # List what we created
+              echo 'Created artifacts:' &&
+              ls -la /workspace/artifacts/
             "
       
       - name: Upload ARM64 artifacts
