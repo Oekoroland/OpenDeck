@@ -358,8 +358,8 @@ jobs:
               # Install frontend dependencies
               deno install &&
               
-              # Build the Tauri application natively on ARM64
-              deno task tauri build &&
+              # Build the Tauri application natively on ARM64 (skip AppImage due to linuxdeploy issues)
+              deno task tauri build -- --bundles deb,rpm &&
               
               # Create artifacts directory
               mkdir -p /workspace/artifacts &&
