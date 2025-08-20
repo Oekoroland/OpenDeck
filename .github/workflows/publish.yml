@@ -58,14 +58,16 @@ jobs:
       - name: install dependencies (ARM64 cross-compilation)
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
         run: |
+          # Install cross-compilation toolchain
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          # Add ARM64 architecture and install ARM64 packages
-          sudo dpkg --add-architecture arm64
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64 libudev-dev:arm64
-          # Install additional cross-compilation dependencies
-          sudo apt-get install -y pkg-config:arm64
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+          
+          # Install pkg-config for cross-compilation
+          sudo apt-get install -y pkg-config
+          
+          # Note: We're using a minimal approach here because WebKit cross-compilation
+          # can be problematic. The Tauri build might need to be configured to use
+          # system WebKit on the target device instead of statically linking.
       - name: Set cross-compilation environment (ARM64)
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
         run: |
