@@ -335,18 +335,25 @@ jobs:
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             ubuntu:22.04 \
             bash -c "
-              # Update and install dependencies
+              # Update and install dependencies (including unzip for Deno)
               apt-get update &&
-              apt-get install -y curl build-essential libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev pkg-config libssl-dev git &&
+              apt-get install -y curl build-essential libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev pkg-config libssl-dev git unzip &&
               
               # Install Rust
               curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable &&
+              
+              # Source Rust environment
+              . /root/.cargo/env &&
               
               # Install Deno
               curl -fsSL https://deno.land/install.sh | sh &&
               
               # Set up PATH
               export PATH=\"/root/.cargo/bin:/root/.deno/bin:\$PATH\" &&
+              
+              # Verify tools are working
+              rustc --version &&
+              deno --version &&
               
               # Install frontend dependencies
               deno install &&
