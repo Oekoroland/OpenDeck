@@ -198,6 +198,21 @@ jobs:
           Cflags: -I${includedir}/webkitgtk-4.1
           EOF
           
+          # Create libsoup-3.0.pc (HTTP client library)
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libsoup-3.0.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: libsoup
+          Description: HTTP client/server library
+          Version: 3.0.8
+          Requires: glib-2.0
+          Libs: -L${libdir} -lsoup-3.0
+          Cflags: -I${includedir}/libsoup-3.0
+          EOF
+          
           # Create additional required .pc files
           sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libappindicator3-0.1.pc << 'EOF'
           prefix=/usr
