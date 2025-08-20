@@ -319,39 +319,46 @@ jobs:
         if: false  # Disabled - using Docker for ARM64 builds
         run: |
           echo "ARM64 builds are handled by Docker - skipping cross-compilation setup"
-      - name: Build ARM64 using Docker
+      - name: Build ARM64 using cross-compilation
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
         run: |
-          # Use Docker with ARM64 emulation for a clean, native build environment
-          docker run --rm --platform linux/arm64 \
-            -v ${{ github.workspace }}:/workspace \
-            -w /workspace \
-            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
-            ubuntu:22.04 \
-            bash -c "
-              # Update and install dependencies
-              apt-get update &&
-              apt-get install -y curl build-essential libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev pkg-config libssl-dev git &&
-              
-              # Install Rust
-              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable &&
-              
-              # Install Deno
-              curl -fsSL https://deno.land/install.sh | sh &&
-              
-              # Set up PATH
-              export PATH=\"/root/.cargo/bin:/root/.deno/bin:\$PATH\" &&
-              
-              # Install frontend dependencies
-              deno install &&
-              
-              # Build the Tauri application natively on ARM64
-              deno task tauri build &&
-              
-              # Copy artifacts to expected location for upload
-              mkdir -p /workspace/artifacts &&
-              find src-tauri/target/release/bundle -name '*.deb' -o -name '*.AppImage' -o -name '*.tar.gz' | xargs -I {} cp {} /workspace/artifacts/ || true
-            "
+          # Install cross-compilation toolchain
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu pkg-config
+          
+          # Install Rust target
+          rustup target add aarch64-unknown-linux-gnu
+          
+          # Set up environment for cross-compilation
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+          export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          export PKG_CONFIG_ALLOW_CROSS=1
+          
+          # Force Rust to use vendored OpenSSL to avoid cross-compilation issues
+          export OPENSSL_STATIC=1
+          export OPENSSL_VENDORED=1
+          export OPENSSL_NO_PKG_CONFIG=1
+          
+          # Create minimal .cargo/config.toml
+          mkdir -p .cargo
+          cat > .cargo/config.toml << 'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+          
+          # Build with explicit vendored OpenSSL
+          cd src-tauri
+          cargo build --release --target aarch64-unknown-linux-gnu
+          
+          # Create a simple bundle structure
+          mkdir -p target/release/bundle/deb
+          
+          # Copy the binary to a known location for artifact upload
+          mkdir -p ../artifacts
+          cp target/aarch64-unknown-linux-gnu/release/opendeck ../artifacts/opendeck-arm64 || true
+          ls -la target/aarch64-unknown-linux-gnu/release/
       
       - name: Upload ARM64 artifacts
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
