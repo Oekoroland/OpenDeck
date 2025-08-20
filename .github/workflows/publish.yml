@@ -51,19 +51,15 @@ jobs:
       - name: install frontend dependencies
         run: deno install
       - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04' && matrix.arch != 'arm64' && matrix.arch != 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev
+      - name: install dependencies (regular builds)
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch != 'arm64'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev
-      - name: install dependencies (ARM64 cross-compilation)
-        if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
-        run: |
-          # Install cross-compilation toolchain
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross pkg-config
-          
-          # Install additional tools needed for vendored OpenSSL compilation
-          sudo apt-get install -y make perl curl
           
           # Create complete pkg-config files for cross-compilation
           sudo mkdir -p /usr/lib/aarch64-linux-gnu/pkgconfig
@@ -320,25 +316,52 @@ jobs:
           
           echo "Complete pkg-config setup for ARM64 cross-compilation created"
       - name: Set cross-compilation environment (ARM64)
+        if: false  # Disabled - using Docker for ARM64 builds
+        run: |
+          echo "ARM64 builds are handled by Docker - skipping cross-compilation setup"
+      - name: Build ARM64 using Docker
         if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
         run: |
-          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
-          echo "AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar" >> $GITHUB_ENV
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "PKG_CONFIG_SYSROOT_DIR=/usr/aarch64-linux-gnu" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
-          # Force vendored OpenSSL using multiple approaches
-          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
-          echo "OPENSSL_VENDORED=1" >> $GITHUB_ENV
-          echo "CARGO_FEATURE_VENDORED=1" >> $GITHUB_ENV
-          echo "CARGO_CFG_FEATURE_VENDORED=1" >> $GITHUB_ENV
-          # Disable system OpenSSL detection completely
-          echo "OPENSSL_NO_PKG_CONFIG=1" >> $GITHUB_ENV
-          echo "OPENSSL_DIR=" >> $GITHUB_ENV
+          # Use Docker with ARM64 emulation for a clean, native build environment
+          docker run --rm --platform linux/arm64 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            ubuntu:22.04 \
+            bash -c "
+              # Update and install dependencies
+              apt-get update &&
+              apt-get install -y curl build-essential libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev pkg-config libssl-dev git &&
+              
+              # Install Rust
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable &&
+              
+              # Install Deno
+              curl -fsSL https://deno.land/install.sh | sh &&
+              
+              # Set up PATH
+              export PATH=\"/root/.cargo/bin:/root/.deno/bin:\$PATH\" &&
+              
+              # Install frontend dependencies
+              deno install &&
+              
+              # Build the Tauri application natively on ARM64
+              deno task tauri build &&
+              
+              # Copy artifacts to expected location for upload
+              mkdir -p /workspace/artifacts &&
+              find src-tauri/target/release/bundle -name '*.deb' -o -name '*.AppImage' -o -name '*.tar.gz' | xargs -I {} cp {} /workspace/artifacts/ || true
+            "
+      
+      - name: Upload ARM64 artifacts
+        if: matrix.platform == 'ubuntu-22.04' && matrix.arch == 'arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-artifacts-arm64
+          path: artifacts/*
+      
       - uses: tauri-apps/tauri-action@v0
+        if: matrix.platform != 'ubuntu-22.04' || matrix.arch != 'arm64'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
