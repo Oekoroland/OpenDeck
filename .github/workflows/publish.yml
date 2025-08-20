@@ -330,9 +330,14 @@ jobs:
           echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
-          # Use vendored OpenSSL to avoid cross-compilation header issues
+          # Force vendored OpenSSL using multiple approaches
           echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
           echo "OPENSSL_VENDORED=1" >> $GITHUB_ENV
+          echo "CARGO_FEATURE_VENDORED=1" >> $GITHUB_ENV
+          echo "CARGO_CFG_FEATURE_VENDORED=1" >> $GITHUB_ENV
+          # Disable system OpenSSL detection completely
+          echo "OPENSSL_NO_PKG_CONFIG=1" >> $GITHUB_ENV
+          echo "OPENSSL_DIR=" >> $GITHUB_ENV
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
