@@ -183,6 +183,21 @@ jobs:
           Cflags: -I${includedir}/webkitgtk-4.1
           EOF
           
+          # Create javascriptcoregtk-4.1.pc (WebKit JavaScript engine)
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/javascriptcoregtk-4.1.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: JavaScriptCoreGTK
+          Description: JavaScript engine from WebKitGTK+
+          Version: 2.40.5
+          Requires: glib-2.0
+          Libs: -L${libdir} -ljavascriptcoregtk-4.1
+          Cflags: -I${includedir}/webkitgtk-4.1
+          EOF
+          
           # Create additional required .pc files
           sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libappindicator3-0.1.pc << 'EOF'
           prefix=/usr
