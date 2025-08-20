@@ -62,6 +62,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross pkg-config
           
+          # Install OpenSSL for cross-compilation
+          sudo apt-get install -y libssl-dev
+          
           # Create complete pkg-config files for cross-compilation
           sudo mkdir -p /usr/lib/aarch64-linux-gnu/pkgconfig
           
@@ -228,6 +231,51 @@ jobs:
           Cflags: -I${includedir}/gtk-3.0 -I${includedir}/gtk-3.0/gdk
           EOF
           
+          # Create OpenSSL pkg-config files
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/openssl.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: OpenSSL
+          Description: Secure Sockets Layer and cryptography libraries
+          Version: 3.0.2
+          Libs: -L${libdir} -lssl -lcrypto
+          Cflags: -I${includedir}/openssl
+          EOF
+          
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libssl.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: OpenSSL-libssl
+          Description: Secure Sockets Layer library
+          Version: 3.0.2
+          Requires: libcrypto
+          Libs: -L${libdir} -lssl
+          Cflags: -I${includedir}/openssl
+          EOF
+          
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libcrypto.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: OpenSSL-libcrypto
+          Description: OpenSSL cryptography library
+          Version: 3.0.2
+          Libs: -L${libdir} -lcrypto
+          Cflags: -I${includedir}/openssl
+          EOF
+          
+          # Create minimal OpenSSL headers directory
+          sudo mkdir -p /usr/aarch64-linux-gnu/usr/include/openssl
+          sudo touch /usr/aarch64-linux-gnu/usr/include/openssl/opensslconf.h
+          
           # Create additional required .pc files
           sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libappindicator3-0.1.pc << 'EOF'
           prefix=/usr
@@ -282,6 +330,13 @@ jobs:
           echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
+          # OpenSSL specific environment variables
+          echo "OPENSSL_DIR=/usr" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
+          echo "AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_DIR=/usr" >> $GITHUB_ENV
+          echo "AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
+          echo "AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
