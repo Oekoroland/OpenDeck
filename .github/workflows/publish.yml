@@ -62,8 +62,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross pkg-config
           
-          # Install OpenSSL for cross-compilation
-          sudo apt-get install -y libssl-dev
+          # Install additional tools needed for vendored OpenSSL compilation
+          sudo apt-get install -y make perl
           
           # Create complete pkg-config files for cross-compilation
           sudo mkdir -p /usr/lib/aarch64-linux-gnu/pkgconfig
@@ -330,13 +330,9 @@ jobs:
           echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
-          # OpenSSL specific environment variables
-          echo "OPENSSL_DIR=/usr" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
-          echo "AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_DIR=/usr" >> $GITHUB_ENV
-          echo "AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
-          echo "AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
+          # Use vendored OpenSSL to avoid cross-compilation header issues
+          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
+          echo "OPENSSL_VENDORED=1" >> $GITHUB_ENV
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
