@@ -213,6 +213,21 @@ jobs:
           Cflags: -I${includedir}/libsoup-3.0
           EOF
           
+          # Create gdk-x11-3.0.pc (X11 backend for GDK)
+          sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/gdk-x11-3.0.pc << 'EOF'
+          prefix=/usr
+          exec_prefix=${prefix}
+          libdir=${exec_prefix}/lib/aarch64-linux-gnu
+          includedir=${prefix}/include
+          
+          Name: GDK X11
+          Description: GTK+ Drawing Kit for X11
+          Version: 3.24.33
+          Requires: gdk-3.0
+          Libs: -L${libdir} -lgdk-3 -lX11
+          Cflags: -I${includedir}/gtk-3.0 -I${includedir}/gtk-3.0/gdk
+          EOF
+          
           # Create additional required .pc files
           sudo tee /usr/lib/aarch64-linux-gnu/pkgconfig/libappindicator3-0.1.pc << 'EOF'
           prefix=/usr
